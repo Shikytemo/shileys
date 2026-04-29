@@ -1,64 +1,109 @@
-<h1><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
+<h1 align="center">Shileys</h1>
 
+<div align="center">
+  A Baileys-based WebSockets TypeScript library for interacting with the WhatsApp Web API, with native-flow interactive button helpers.
+</div>
+
+> [!NOTE]
+> Shileys is a public fork of [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys). It keeps the Baileys API shape and adds a small high-level `interactiveButtons` message helper plus an optional CLI banner.
 
 > [!CAUTION]
-> NOTICE OF BREAKING CHANGE.
->
-> As of 7.0.0, multiple breaking changes were introduced into the library.
->
-> Please check out https://whiskey.so/migrate-latest for more information.
+> This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or affiliates. Use responsibly and follow WhatsApp's Terms of Service.
 
-Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
+## Features
 
-Join the WhiskeySockets community via the link: https://whiskey.so/discord
+- WebSocket-based WhatsApp Web client
+- TypeScript-ready Baileys API
+- Native-flow `interactiveButtons` helper
+- Optional `shileys` CLI banner
+- No forced bot name, footer, watermark, or runtime branding in outgoing messages
 
-# Usage & Guide
+## Install
 
-> [!IMPORTANT]
-> The new guide is a work in progress. Expect missing pages/content. [Report missing or incorrect content.](https://github.com/WhiskeySockets/baileys.wiki-site/issues/new)
->
-> **You can still access the old guide here:** [README.md](https://github.com/WhiskeySockets/Baileys/tree/master/README.md), or the [NPM homepage](https://npmjs.com/package/baileys).
+```sh
+npm install github:Shikytemo/shileys
+```
 
-The new guide is posted at https://baileys.wiki .
+Or with yarn:
 
-# Get Support
+```sh
+yarn add github:Shikytemo/shileys
+```
 
-If you'd like business to enterprise-level support from Rajeh, the current maintainer of Baileys, you can book a video chat. Book a 1 hour time slot by contacting him on Discord or pre-ordering [here](https://purpshell.dev/book). The earlier you pre-order the better, as his time slots usually fill up very quickly. He offers immense value per hour and will answer all your questions before the time runs out.
+## Import
 
-If you are a business, we encourage you to contribute back to the high development costs of the project and to feed the maintainers who dump tens of hours a week on this. You can do so by booking meetings or sponsoring below. All support, even in bona fide / contribution hours, is welcome by businesses of all sizes. This is not condoning or endorsing businesses to use the library. See the Disclaimer below.
+```ts
+import makeWASocket from 'shileys'
+```
 
-# Sponsor
+Existing Baileys-style usage stays the same:
 
-If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
+```ts
+const sock = makeWASocket({
+    auth,
+    printQRInTerminal: true
+})
+```
 
-# Disclaimer
-> [!CAUTION]
-> This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
-> The official WhatsApp website can be found at whatsapp.com. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
->
-> The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
-> Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
+## Interactive Buttons
 
-# License
-Copyright (c) 2025 Rajeh Taher/WhiskeySockets
+All visible text is provided by your application.
 
-Licensed under the MIT License:
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+```ts
+await sock.sendMessage(
+    jid,
+    {
+        text: 'Choose an option',
+        title: 'Bot Menu',
+        footer: 'Select one',
+        interactiveButtons: [
+            {
+                name: 'quick_reply',
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'Open Menu',
+                    id: 'open_menu'
+                })
+            },
+            {
+                name: 'cta_url',
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'Open Website',
+                    url: 'https://example.com'
+                })
+            }
+        ]
+    }
+)
+```
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Common button names:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+| Name | Purpose |
+|------|---------|
+| `quick_reply` | Send a button reply payload back to the bot |
+| `cta_url` | Open a URL |
+| `cta_copy` | Copy text/code |
+| `cta_call` | Start a phone call |
 
-Thus, the maintainers of the project can't be held liable for any potential misuse of this project.
+Button availability can vary by WhatsApp client, account type, and chat type. Prefer `interactiveButtons`/native-flow messages over legacy `templateButtons`.
+
+## CLI
+
+The CLI is optional and only prints package information when run directly.
+
+```sh
+shileys
+shileys --version
+shileys --plain
+shileys --json
+```
+
+## Upstream
+
+- Shileys: https://github.com/Shikytemo/shileys
+- Original Baileys: https://github.com/WhiskeySockets/Baileys
+- Baileys guide: https://baileys.wiki
+
+## License
+
+MIT License. Original Baileys copyright belongs to its respective maintainers.
