@@ -1,6 +1,9 @@
-<h1 align='center'><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
+<h1 align='center'>Shileys</h1>
 
-<div align='center'>Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.</div>
+<div align='center'>A Baileys-based WebSockets TypeScript library for interacting with the WhatsApp Web API, with native-flow interactive button helpers.</div>
+
+> [!NOTE]
+> Shileys is a public fork of [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys). It keeps the Baileys API shape and adds a small high-level `interactiveButtons` message helper plus an optional CLI banner.
 
 
 > [!CAUTION]
@@ -9,6 +12,11 @@
 > As of 7.0.0, multiple breaking changes were introduced into the library.
 >
 > Please check out https://whiskey.so/migrate-latest for more information.
+
+# Shileys Notes
+This fork does not inject a bot name, watermark text, footer, or banner into runtime messages. Message text, title, footer, and button labels are fully controlled by the developer using the package.
+
+The optional `shileys` CLI only prints package information when you run it directly.
 
 # Important Note
 This is a temporary README.md, the new guide is in development and will this file will be replaced with .github/README.md (already a default on GitHub).
@@ -48,29 +56,37 @@ This is the only official repository and is maintained by the community.
 Do check out & run [example.ts](Example/example.ts) to see an example usage of the library.
 The script covers most common use cases.
 To run the example script, download or clone the repo and then type the following in a terminal:
-1. ``` cd path/to/Baileys ```
+1. ``` cd path/to/shileys ```
 2. ``` yarn ```
 3. ``` yarn example ```
 
 ## Install
 
-Use the stable version:
+Install from GitHub:
 ```
-yarn add @whiskeysockets/baileys
+npm install github:Shikytemo/shileys
 ```
 
-Use the edge version (no guarantee of stability, but latest fixes + features)
+Or with yarn:
 ```
-yarn add github:WhiskeySockets/Baileys
+yarn add github:Shikytemo/shileys
 ```
 
 Then import your code using:
 ```ts
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from 'shileys'
+```
+
+Optional CLI:
+```sh
+npx shileys --plain
+shileys --version
 ```
 
 # Links
 
+- [Shileys Repository](https://github.com/Shikytemo/shileys)
+- [Original Baileys Repository](https://github.com/WhiskeySockets/Baileys)
 - [Discord](https://discord.gg/WeJM5FP9GG)
 - [Docs](https://guide.whiskeysockets.io/)
 
@@ -104,6 +120,7 @@ import makeWASocket from '@whiskeysockets/baileys'
         - [Reaction Message](#reaction-message)
         - [Pin Message](#pin-message)
         - [Poll Message](#poll-message)
+        - [Interactive Buttons](#interactive-buttons)
     - [Sending with Link Preview](#sending-messages-with-link-previews)
     - [Media Messages](#media-messages)
         - [Gif Message](#gif-message)
@@ -195,7 +212,7 @@ WhatsApp provides a multi-device API that allows Baileys to be authenticated as 
 > You can customize browser name if you connect with **QR-CODE**, with `Browser` constant, we have some browsers config, **see [here](https://baileys.whiskeysockets.io/types/BrowsersMap.html)**
 
 ```ts
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from 'shileys'
 
 const sock = makeWASocket({
     // can provide additional config here
@@ -215,7 +232,7 @@ If the connection is successful, you will see a QR code printed on your terminal
 The phone number can't have `+` or `()` or `-`, only numbers, you must provide country code
 
 ```ts
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from 'shileys'
 
 const sock = makeWASocket({
     // can provide additional config here
@@ -288,7 +305,7 @@ You obviously don't want to keep scanning the QR code every time you want to con
 
 So, you can load the credentials to log back in:
 ```ts
-import makeWASocket, { useMultiFileAuthState } from '@whiskeysockets/baileys'
+import makeWASocket, { useMultiFileAuthState } from 'shileys'
 
 const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
 
@@ -331,7 +348,7 @@ sock.ev.on('messages.upsert', ({ messages }) => {
 > For reliable serialization of the authentication state, especially when storing as JSON, always use the BufferJSON utility.
 
 ```ts
-import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys'
+import makeWASocket, { DisconnectReason, useMultiFileAuthState } from 'shileys'
 import { Boom } from '@hapi/boom'
 
 async function connectToWhatsApp () {
@@ -413,7 +430,7 @@ sock.ev.on('messages.update', event => {
 It can be used as follows:
 
 ```ts
-import makeWASocket, { makeInMemoryStore } from '@whiskeysockets/baileys'
+import makeWASocket, { makeInMemoryStore } from 'shileys'
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
 const store = makeInMemoryStore({ })
@@ -589,6 +606,48 @@ await sock.sendMessage(
 )
 ```
 
+#### Interactive Buttons
+Shileys adds a high-level helper for WhatsApp native-flow interactive buttons.
+All visible text is provided by your application.
+
+```ts
+await sock.sendMessage(
+    jid,
+    {
+        text: 'Choose an option',
+        title: 'Bot Menu',
+        footer: 'Select one',
+        interactiveButtons: [
+            {
+                name: 'quick_reply',
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'Open Menu',
+                    id: 'open_menu'
+                })
+            },
+            {
+                name: 'cta_url',
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'Open Website',
+                    url: 'https://example.com'
+                })
+            }
+        ]
+    }
+)
+```
+
+Common button names include:
+
+| Name | Purpose |
+|------|---------|
+| `quick_reply` | Send a button reply payload back to the bot |
+| `cta_url` | Open a URL |
+| `cta_copy` | Copy text/code |
+| `cta_call` | Start a phone call |
+
+Button availability can vary by WhatsApp client, account type, and chat type. Prefer `interactiveButtons`/native-flow messages over legacy `templateButtons`.
+
 ### Sending Messages with Link Previews
 
 1. By default, wa does not have link generation when sent from the web
@@ -729,7 +788,7 @@ await sock.sendMessage(jid, {
 If you want to save the media you received
 ```ts
 import { createWriteStream } from 'fs'
-import { downloadMediaMessage, getContentType } from '@whiskeysockets/baileys'
+import { downloadMediaMessage, getContentType } from 'shileys'
 
 sock.ev.on('messages.upsert', async ({ [m] }) => {
     if (!m.message) return // if there is no text or media message
