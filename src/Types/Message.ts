@@ -217,6 +217,19 @@ export type ButtonReplyInfo = {
 	index: number
 }
 
+export type NativeFlowButton = proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton
+
+export type InteractiveButtonsMessage = {
+	text: string
+	title?: string
+	subtitle?: string
+	footer?: string
+	interactiveButtons: NativeFlowButton[]
+	messageParamsJson?: string
+	messageVersion?: number
+} & Mentionable &
+	Contextable
+
 export type GroupInviteInfo = {
 	inviteCode: string
 	inviteExpiration: number
@@ -236,6 +249,7 @@ export type AnyRegularMessageContent = (
 	  } & Mentionable &
 			Contextable &
 			Editable)
+	| InteractiveButtonsMessage
 	| AnyMediaMessageContent
 	| { event: EventMessageOptions }
 	| ({

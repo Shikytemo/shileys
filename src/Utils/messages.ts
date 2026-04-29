@@ -397,7 +397,42 @@ export const generateWAMessageContent = async (
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
-	if (hasNonNullishProperty(message, 'text')) {
+	if (hasNonNullishProperty(message, 'interactiveButtons')) {
+		if (!Array.isArray(message.interactiveButtons) || message.interactiveButtons.length === 0) {
+			throw new Boom('interactiveButtons must contain at least 1 button', { statusCode: 400 })
+		}
+
+		for (const button of message.interactiveButtons) {
+			if (!button.name || typeof button.name !== 'string') {
+				throw new Boom('interactiveButtons button requires a string name', { statusCode: 400 })
+			}
+
+			if (!button.buttonParamsJson || typeof button.buttonParamsJson !== 'string') {
+				throw new Boom('interactiveButtons button requires a string buttonParamsJson', { statusCode: 400 })
+			}
+		}
+
+		m.interactiveMessage = WAProto.Message.InteractiveMessage.create({
+			body: {
+				text: message.text
+			},
+			header: {
+				title: message.title,
+				subtitle: message.subtitle,
+				hasMediaAttachment: false
+			},
+			footer: message.footer
+				? {
+						text: message.footer
+					}
+				: undefined,
+			nativeFlowMessage: {
+				buttons: message.interactiveButtons,
+				messageParamsJson: message.messageParamsJson,
+				messageVersion: message.messageVersion
+			}
+		})
+	} else if (hasNonNullishProperty(message, 'text')) {
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview
