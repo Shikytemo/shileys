@@ -802,7 +802,23 @@ export const generateWAMessage = async (jid: string, content: AnyMessageContent,
 	// ensure msg ID is with every log
 	options.logger = options?.logger?.child({ msgId: options.messageId })
 	// Pass jid in the options to generateWAMessageContent
-	return generateWAMessageFromContent(jid, await generateWAMessageContent(content, { ...options, jid }), options)
+	let message = await generateWAMessageContent(content, { ...options, jid })
+
+	if (message.interactiveMessage?.nativeFlowMessage) {
+		message = WAProto.Message.create({
+			viewOnceMessageV2Extension: {
+				message: {
+					messageContextInfo: {
+						deviceListMetadata: {},
+						deviceListMetadataVersion: 2
+					},
+					...message
+				}
+			}
+		})
+	}
+
+	return generateWAMessageFromContent(jid, message, options)
 }
 
 /** Get the key to access the true type of content */

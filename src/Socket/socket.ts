@@ -14,7 +14,7 @@ import {
 	TimeMs,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
-import type { LIDMapping, SocketConfig } from '../Types'
+import type { Contact, LIDMapping, SocketConfig, WAMessage } from '../Types'
 import { DisconnectReason } from '../Types'
 import {
 	addTransactionCapability,
@@ -32,7 +32,11 @@ import {
 	getNextPreKeysNode,
 	makeEventBuffer,
 	makeNoiseHandler,
+	lidToJid,
+	type NormalizeLidOptions,
 	promiseTimeout,
+	normalizeContactLidToJid,
+	normalizeMessageLidToJid,
 	signedKeyPair,
 	xmppSignedPreKey
 } from '../Utils'
@@ -371,6 +375,8 @@ export const makeSocket = (config: SocketConfig) => {
 	// add transaction capability
 	const keys = addTransactionCapability(authState.keys, logger, transactionOpts)
 	const signalRepository = makeSignalRepository({ creds, keys }, logger, pnFromLIDUSync)
+	const getPNForLID = signalRepository.lidMapping.getPNForLID.bind(signalRepository.lidMapping)
+	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
 
 	let lastDateRecv: Date
 	let epoch = 1
@@ -1126,7 +1132,13 @@ export const makeSocket = (config: SocketConfig) => {
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
 		sendWAMBuffer,
 		executeUSyncQuery,
-		onWhatsApp
+		onWhatsApp,
+		lidToJid: (jid: string) => lidToJid(jid, getPNForLID),
+		jidToLid: (jid: string) => getLIDForPN(jid),
+		normalizeMessageLidToJid: <T extends WAMessage>(message: T, options?: NormalizeLidOptions) =>
+			normalizeMessageLidToJid(message, getPNForLID, options),
+		normalizeContactLidToJid: <T extends Contact>(contact: T, options?: NormalizeLidOptions) =>
+			normalizeContactLidToJid(contact, getPNForLID, options)
 	}
 }
 
