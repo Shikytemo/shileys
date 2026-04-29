@@ -1,95 +1,113 @@
-<h1 align="center">Shileys</h1>
-
 <div align="center">
-  A Baileys-based WebSockets TypeScript library for interacting with the WhatsApp Web API, with native-flow interactive button helpers.
+  <img src="https://media.tenor.com/wHfOfpKJNIcAAAAM/little-witch-academia-diana-cavendish.gif" width="360" alt="Diana anime gif" />
+
+  <h1>Shileys</h1>
+
+  <p>
+    Baileys mod ringan buat WhatsApp Web socket, difokuskan ke native-flow button dan helper LID/JID.
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Baileys-based-25D366?style=for-the-badge" alt="Baileys based" />
+    <img src="https://img.shields.io/badge/Native--Flow-Buttons-8A2BE2?style=for-the-badge" alt="Native flow buttons" />
+    <img src="https://img.shields.io/badge/TypeScript-ready-3178C6?style=for-the-badge" alt="TypeScript ready" />
+  </p>
 </div>
 
-> [!NOTE]
-> Shileys is a public fork of [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys). It keeps the Baileys API shape and adds a small high-level `interactiveButtons` message helper plus an optional CLI banner.
+---
 
-> [!CAUTION]
-> This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or affiliates. Use responsibly and follow WhatsApp's Terms of Service.
+## ✨ Fokus Mod
 
-## Features
+Shileys tetap menjaga bentuk API Baileys, tapi menambah fitur yang enak dipakai buat bot publik:
 
-- WebSocket-based WhatsApp Web client
-- TypeScript-ready Baileys API
-- Native-flow `interactiveButtons` helper
-- Optional `shileys` CLI banner
-- No forced bot name, footer, watermark, or runtime branding in outgoing messages
+- 🔘 `interactiveButtons` untuk native-flow button.
+- 🧭 Helper LID/JID: `lidToJid`, `jidToLid`, `normalizeMessageLidToJid`, `normalizeContactLidToJid`.
+- 🧼 Tidak ada watermark, nama bot, footer, atau branding paksa di pesan runtime.
+- 🧩 CLI kecil `shileys` buat info package.
+- 🛠️ TypeScript-ready dan tetap kompatibel dengan flow Baileys.
 
-## Install
+> Shileys adalah fork publik dari [WhiskeySockets/Baileys](https://github.com/WhiskeySockets/Baileys). Gunakan dengan tanggung jawab dan ikuti Terms of Service WhatsApp.
+
+## 📦 Install
 
 ```sh
 npm install github:Shikytemo/shileys
 ```
 
-Or with yarn:
+atau:
 
 ```sh
 yarn add github:Shikytemo/shileys
 ```
 
-## Import
+## 🚀 Basic Usage
 
 ```ts
 import makeWASocket from 'shileys'
-```
 
-Existing Baileys-style usage stays the same:
-
-```ts
 const sock = makeWASocket({
-    auth,
-    printQRInTerminal: true
+  auth,
+  printQRInTerminal: true
 })
 ```
 
-## Interactive Buttons
+## 🔘 Native-Flow Button
 
-All visible text is provided by your application.
+Semua teks bisa kamu custom sendiri dari bot kamu.
 
 ```ts
-await sock.sendMessage(
-    jid,
+await sock.sendMessage(jid, {
+  text: 'Pilih fitur yang tersedia.',
+  title: 'Bot Menu',
+  footer: 'Powered by your bot',
+  interactiveButtons: [
     {
-        text: 'Choose an option',
-        title: 'Bot Menu',
-        footer: 'Select one',
-        interactiveButtons: [
-            {
-                name: 'quick_reply',
-                buttonParamsJson: JSON.stringify({
-                    display_text: 'Open Menu',
-                    id: 'open_menu'
-                })
-            },
-            {
-                name: 'cta_url',
-                buttonParamsJson: JSON.stringify({
-                    display_text: 'Open Website',
-                    url: 'https://example.com'
-                })
-            }
-        ]
+      name: 'quick_reply',
+      buttonParamsJson: JSON.stringify({
+        display_text: 'Ping',
+        id: '.ping'
+      })
+    },
+    {
+      name: 'cta_url',
+      buttonParamsJson: JSON.stringify({
+        display_text: 'GitHub',
+        url: 'https://github.com/Shikytemo/shileys'
+      })
     }
-)
+  ]
+})
 ```
 
-Common button names:
+Button yang biasa dipakai:
 
-| Name | Purpose |
-|------|---------|
-| `quick_reply` | Send a button reply payload back to the bot |
-| `cta_url` | Open a URL |
-| `cta_copy` | Copy text/code |
-| `cta_call` | Start a phone call |
+| Button | Fungsi |
+| --- | --- |
+| `quick_reply` | Balasan cepat ke bot |
+| `single_select` | List/pilihan menu |
+| `cta_url` | Buka link |
+| `cta_copy` | Copy teks/kode |
+| `cta_call` | Tombol telepon |
 
-Button availability can vary by WhatsApp client, account type, and chat type. Prefer `interactiveButtons`/native-flow messages over legacy `templateButtons`.
+## 🧭 LID ke JID
 
-## CLI
+Kalau WhatsApp ngirim chat sebagai `@lid`, Shileys menyediakan helper supaya module bot lebih gampang dipakai.
 
-The CLI is optional and only prints package information when run directly.
+```ts
+const replyJid = await sock.lidToJid(message.key.remoteJid)
+const normalized = await sock.normalizeMessageLidToJid(message)
+```
+
+Contoh pakai di handler:
+
+```ts
+const msg = await sock.normalizeMessageLidToJid(rawMessage)
+const jid = msg.key.remoteJid
+
+await sock.sendMessage(jid, { text: 'Ready.' })
+```
+
+## 🧪 CLI
 
 ```sh
 shileys
@@ -98,12 +116,18 @@ shileys --plain
 shileys --json
 ```
 
-## Upstream
+## 📝 Catatan
+
+- Shileys tidak berafiliasi dengan WhatsApp.
+- Fitur native-flow bisa berbeda hasilnya tergantung client, akun, dan tipe chat.
+- Untuk dokumentasi API dasar, lihat upstream Baileys.
+
+## 🔗 Links
 
 - Shileys: https://github.com/Shikytemo/shileys
-- Original Baileys: https://github.com/WhiskeySockets/Baileys
-- Baileys guide: https://baileys.wiki
+- Upstream Baileys: https://github.com/WhiskeySockets/Baileys
+- Baileys Wiki: https://baileys.wiki
 
-## License
+## 📄 License
 
-MIT License. Original Baileys copyright belongs to its respective maintainers.
+MIT. Credit untuk maintainers Baileys tetap milik masing-masing maintainers.
