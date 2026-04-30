@@ -1,4 +1,4 @@
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import type { NativeFlowButton } from '../Types'
 import type { BinaryNode } from '../WABinary'
 import { isJidGroup } from '../WABinary'
