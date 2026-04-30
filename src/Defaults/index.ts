@@ -66,6 +66,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	fireInitQueries: true,
 	auth: undefined as unknown as AuthenticationState,
 	markOnlineOnConnect: true,
+	autoFollowNewsletter: false,
 	syncFullHistory: true,
 	patchMessageBeforeSending: msg => msg,
 	shouldSyncHistoryMessage: ({ syncType }: proto.Message.IHistorySyncNotification) => {
