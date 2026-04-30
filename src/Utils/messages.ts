@@ -412,15 +412,60 @@ export const generateWAMessageContent = async (
 			}
 		}
 
+		const header: proto.Message.InteractiveMessage.IHeader = {
+			title: message.title,
+			subtitle: message.subtitle,
+			hasMediaAttachment: false
+		}
+
+		if (hasOptionalProperty(message, 'image') && message.image) {
+			const { imageMessage } = await prepareWAMessageMedia(
+				{
+					image: message.image,
+					caption: message.caption,
+					jpegThumbnail: message.jpegThumbnail,
+					mimetype: message.mimetype,
+					width: message.width,
+					height: message.height
+				},
+				options
+			)
+			header.hasMediaAttachment = true
+			header.imageMessage = imageMessage
+		} else if (hasOptionalProperty(message, 'video') && message.video) {
+			const { videoMessage } = await prepareWAMessageMedia(
+				{
+					video: message.video,
+					caption: message.caption,
+					gifPlayback: message.gifPlayback,
+					jpegThumbnail: message.jpegThumbnail,
+					mimetype: message.mimetype,
+					width: message.width,
+					height: message.height
+				},
+				options
+			)
+			header.hasMediaAttachment = true
+			header.videoMessage = videoMessage
+		} else if (hasOptionalProperty(message, 'document') && message.document) {
+			const { documentMessage } = await prepareWAMessageMedia(
+				{
+					document: message.document,
+					mimetype: message.mimetype || 'application/octet-stream',
+					fileName: message.fileName,
+					caption: message.caption
+				},
+				options
+			)
+			header.hasMediaAttachment = true
+			header.documentMessage = documentMessage
+		}
+
 		m.interactiveMessage = WAProto.Message.InteractiveMessage.create({
 			body: {
 				text: message.text
 			},
-			header: {
-				title: message.title,
-				subtitle: message.subtitle,
-				hasMediaAttachment: false
-			},
+			header,
 			footer: message.footer
 				? {
 						text: message.footer

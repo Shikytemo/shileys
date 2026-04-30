@@ -224,6 +224,16 @@ export type InteractiveButtonsMessage = {
 	title?: string
 	subtitle?: string
 	footer?: string
+	image?: WAMediaUpload
+	video?: WAMediaUpload
+	gifPlayback?: boolean
+	document?: WAMediaUpload
+	mimetype?: string
+	fileName?: string
+	caption?: string
+	jpegThumbnail?: string
+	width?: number
+	height?: number
 	interactiveButtons: NativeFlowButton[]
 	messageParamsJson?: string
 	messageVersion?: number
