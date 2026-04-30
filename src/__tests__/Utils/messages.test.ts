@@ -1,4 +1,12 @@
 import { generateWAMessageContent } from '../../Utils/messages'
+import {
+	buildNativeFlowAdditionalNodes,
+	callButton,
+	copyButton,
+	quickReplyButton,
+	singleSelectButton,
+	urlButton
+} from '../../Utils/native-flow'
 
 describe('Message generation', () => {
 	it('generates native flow interactive button messages', async () => {
@@ -34,5 +42,44 @@ describe('Message generation', () => {
 				id: 'open_menu'
 			})
 		})
+	})
+
+	it('builds common native flow button helpers', () => {
+		expect(quickReplyButton('Ping', '.ping')).toMatchObject({
+			name: 'quick_reply',
+			buttonParamsJson: JSON.stringify({
+				display_text: 'Ping',
+				id: '.ping'
+			})
+		})
+		expect(urlButton('GitHub', 'https://github.com/Shikytemo/shileys')).toMatchObject({
+			name: 'cta_url'
+		})
+		expect(copyButton('Copy', 'DIANABOT')).toMatchObject({
+			name: 'cta_copy'
+		})
+		expect(callButton('Call', '628385863327')).toMatchObject({
+			name: 'cta_call'
+		})
+		expect(
+			singleSelectButton('Pilih', [
+				{
+					title: 'Menu',
+					rows: [
+						{
+							title: 'Ping',
+							id: '.ping'
+						}
+					]
+				}
+			])
+		).toMatchObject({
+			name: 'single_select'
+		})
+	})
+
+	it('builds native flow relay nodes for user chats and groups', () => {
+		expect(buildNativeFlowAdditionalNodes('628123@s.whatsapp.net').map(node => node.tag)).toEqual(['bot', 'biz'])
+		expect(buildNativeFlowAdditionalNodes('120363@g.us').map(node => node.tag)).toEqual(['biz'])
 	})
 })

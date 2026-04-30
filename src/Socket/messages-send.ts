@@ -16,6 +16,7 @@ import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
 	bindWaitForEvent,
+	buildNativeFlowAdditionalNodes,
 	decryptMediaRetryData,
 	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
@@ -1361,6 +1362,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							event_type: 'creation'
 						}
 					} as BinaryNode)
+				}
+				if (typeof content === 'object' && 'interactiveButtons' in content) {
+					additionalNodes.push(...buildNativeFlowAdditionalNodes(jid))
 				}
 
 				await relayMessage(jid, fullMsg.message!, {

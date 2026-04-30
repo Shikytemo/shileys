@@ -43,7 +43,7 @@ yarn add github:Shikytemo/shileys
 ## 🚀 Basic Usage
 
 ```ts
-import makeWASocket from 'shileys'
+import makeWASocket, { quickReplyButton, urlButton } from 'shileys'
 
 const sock = makeWASocket({
   auth,
@@ -61,20 +61,8 @@ await sock.sendMessage(jid, {
   title: 'Bot Menu',
   footer: 'Powered by your bot',
   interactiveButtons: [
-    {
-      name: 'quick_reply',
-      buttonParamsJson: JSON.stringify({
-        display_text: 'Ping',
-        id: '.ping'
-      })
-    },
-    {
-      name: 'cta_url',
-      buttonParamsJson: JSON.stringify({
-        display_text: 'GitHub',
-        url: 'https://github.com/Shikytemo/shileys'
-      })
-    }
+    quickReplyButton('Ping', '.ping'),
+    urlButton('GitHub', 'https://github.com/Shikytemo/shileys')
   ]
 })
 ```
@@ -88,6 +76,18 @@ Button yang biasa dipakai:
 | `cta_url` | Buka link |
 | `cta_copy` | Copy teks/kode |
 | `cta_call` | Tombol telepon |
+
+Helper yang tersedia:
+
+```ts
+quickReplyButton('Ping', '.ping')
+singleSelectButton('Buka Menu', sections)
+urlButton('GitHub', 'https://github.com/Shikytemo/shileys')
+copyButton('Copy Code', 'DIANABOT')
+callButton('Call Owner', '628xxxx')
+```
+
+`sock.sendMessage()` otomatis menambahkan native-flow relay node yang dibutuhkan WhatsApp, jadi aplikasi tidak perlu memanggil `relayMessage()` manual.
 
 ## 🧭 LID ke JID
 
