@@ -2,6 +2,7 @@ import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
+import type { HumanizeConfig } from '../Utils/humanize'
 import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
@@ -118,6 +119,9 @@ export type SocketConfig = {
 
 	/** Enable recent message caching for retry handling */
 	enableRecentMessageCache: boolean
+
+	/** Humanize outgoing messages with typing presence and jittered delay */
+	humanize?: boolean | HumanizeConfig
 
 	/**
 	 * Returns if a jid should be ignored,

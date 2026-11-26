@@ -10,15 +10,20 @@ import type {
 	MessageRelayOptions,
 	MiscMessageGenerationOptions,
 	SocketConfig,
+	WAMediaUpload,
 	WAMessage,
-	WAMessageKey
+	WAMessageKey,
+	WAPresence
 } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
 	assertMeId,
 	bindWaitForEvent,
+	buildHtmlRichMessageContent,
 	buildNativeFlowAdditionalNodes,
+	createHumanizeController,
+	type CustomPresenceOptions,
 	decryptMediaRetryData,
 	DEF_MEDIA_HOST,
 	encodeNewsletterMessage,
@@ -33,10 +38,14 @@ import {
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
+	makeCustomPresence,
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
-	unixTimestampSeconds
+	type SendHTMLOptions,
+	sleep,
+	unixTimestampSeconds,
+	wrapUploadWithCache
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
@@ -1246,7 +1255,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return result
 	}
 
-	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
+	const waUploadToServer = wrapUploadWithCache(getWAUploadToServer(config, refreshMediaConn))
+	const humanize = createHumanizeController(config.humanize)
+	const { sendCustomPresence, stopPresence } = makeCustomPresence(sock.sendPresenceUpdate)
+	const sendPresenceUpdate = async (
+		type: WAPresence,
+		toJid?: string,
+		options?: CustomPresenceOptions
+	): Promise<void> => {
+		if (options && toJid && (type === 'composing' || type === 'recording' || type === 'paused')) {
+			await sendCustomPresence(toJid, { ...options, type })
+			return
+		}
+
+		await sock.sendPresenceUpdate(type, toJid)
+	}
 
 	const waitForMsgMediaUpdate = bindWaitForEvent(ev, 'messages.media-update')
 
@@ -1268,6 +1291,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		issuePrivacyTokens,
 		assertSessions,
 		relayMessage,
+		humanize,
+		sendCustomPresence,
+		stopPresence,
+		sendPresenceUpdate,
 		sendReceipt,
 		sendReceipts,
 		readMessages,
@@ -1434,7 +1461,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					} as BinaryNode)
 				}
 
-				if (typeof content === 'object' && ('interactiveButtons' in content || 'cards' in content)) {
+				if (
+					typeof content === 'object' &&
+					('interactiveButtons' in content || 'cards' in content || 'buttons' in content || 'sections' in content)
+				) {
 					additionalNodes.push(...buildNativeFlowAdditionalNodes(jid))
 				} else if (options.ai) {
 					additionalNodes.push({
@@ -1452,6 +1482,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							is_status_mention: 'true'
 						}
 					})
+				}
+
+				const shouldHumanize =
+					humanize.enabled && options.humanize !== false && !isDeleteMsg && !isEditMsg && !isPinMsg
+				if (shouldHumanize) {
+					const textLen =
+						typeof content === 'object' && 'text' in content && typeof content.text === 'string'
+							? content.text.length
+							: typeof content === 'object' && 'caption' in content && typeof content.caption === 'string'
+								? content.caption.length
+								: 0
+					await sock.sendPresenceUpdate('composing', jid)
+					await sleep(humanize.delayFor(textLen))
+					await sock.sendPresenceUpdate('paused', jid)
 				}
 
 				await relayMessage(jid, fullMsg.message!, {
@@ -1472,6 +1516,69 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		},
 		sendAlbumMessage: async (jid: string, medias: AlbumMediaItem[], options: MiscMessageGenerationOptions = {}) => {
 			return sendAlbumItems(jid, medias, options)
+		},
+		sendHTML: async (jid: string, html: string | Buffer, options: SendHTMLOptions = {}) => {
+			const userJid = authState.creds.me!.id
+			const { bypassDownload = true, messageId, ...rest } = options
+			const richMsgContent = buildHtmlRichMessageContent(html, rest)
+			const fullMsg = generateWAMessageFromContent(jid, richMsgContent, {
+				userJid,
+				messageId: messageId || generateMessageIDV2(sock.user?.id)
+			})
+
+			await relayMessage(jid, fullMsg.message!, {
+				messageId: fullMsg.key.id!
+			})
+
+			if (bypassDownload) {
+				const editMsg = generateWAMessageFromContent(
+					jid,
+					{
+						protocolMessage: {
+							key: fullMsg.key,
+							type: proto.Message.ProtocolMessage.Type.MESSAGE_EDIT,
+							editedMessage: fullMsg.message,
+							timestampMs: Date.now()
+						}
+					},
+					{
+						userJid,
+						messageId: generateMessageIDV2(sock.user?.id)
+					}
+				)
+				await relayMessage(jid, editMsg.message!, {
+					messageId: editMsg.key.id!,
+					additionalAttributes: { edit: '1' }
+				})
+			}
+
+			if (config.emitOwnEvents) {
+				process.nextTick(async () => {
+					await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
+				})
+			}
+
+			return fullMsg
+		},
+		sendImageHd: async (
+			jid: string,
+			image: WAMediaUpload,
+			captionOrOptions?: string | ({ caption?: string; viewOnce?: boolean } & Record<string, unknown>),
+			options: MiscMessageGenerationOptions = {}
+		) => {
+			const extra =
+				typeof captionOrOptions === 'string'
+					? { caption: captionOrOptions }
+					: (captionOrOptions ?? {})
+			return sendMessageDirect(
+				jid,
+				{
+					image,
+					mimetype: 'image/png',
+					...extra
+				} as AnyMessageContent,
+				options
+			)
 		},
 		sendStatusMentions: async (
 			content: AnyMessageContent,

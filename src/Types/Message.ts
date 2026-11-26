@@ -305,6 +305,55 @@ export type StickerAudioContent = {
 	}
 } & Contextable
 
+export type RequestPaymentContent = {
+	requestPayment: {
+		amount: number
+		currency?: string
+		from: string
+		note?: string
+		expiryTimestamp?: number
+		background?: proto.IPaymentBackground
+	}
+}
+
+export type PollResultContent = {
+	pollResult: {
+		name: string
+		options: { optionName: string; optionVoteCount: number }[]
+	}
+} & Contextable
+
+export type LegacyButtonsContent = {
+	text: string
+	footer?: string
+	title?: string
+	image?: WAMediaUpload
+	video?: WAMediaUpload
+	caption?: string
+	buttons: {
+		buttonId: string
+		buttonText: { displayText: string }
+		type?: number
+	}[]
+} & Mentionable &
+	Contextable
+
+export type LegacySectionsContent = {
+	text: string
+	footer?: string
+	title?: string
+	buttonText: string
+	sections: {
+		title?: string
+		rows: {
+			title: string
+			description?: string
+			rowId: string
+		}[]
+	}[]
+} & Mentionable &
+	Contextable
+
 export type GroupInviteInfo = {
 	inviteCode: string
 	inviteExpiration: number
@@ -328,6 +377,10 @@ export type AnyRegularMessageContent = (
 	| CarouselMessage
 	| HtmlMessageContent
 	| StickerAudioContent
+	| RequestPaymentContent
+	| PollResultContent
+	| LegacyButtonsContent
+	| LegacySectionsContent
 	| AnyMediaMessageContent
 	| { event: EventMessageOptions }
 	| ({
@@ -446,6 +499,8 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
 	ai?: boolean
 	/** JIDs mentioned in a status@broadcast message */
 	statusMentions?: string[]
+	/** override humanize typing delay for this message */
+	humanize?: boolean
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string

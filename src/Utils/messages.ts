@@ -40,6 +40,7 @@ import {
 	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
+import { quickReplyButton, singleSelectButton } from './native-flow'
 import { shouldIncludeReportingToken } from './reporting-utils'
 
 type ExtractByKey<T, K extends PropertyKey> = T extends Record<K, any> ? T : never
@@ -485,7 +486,7 @@ const buildInteractiveMediaHeader = async (
 export const generateWAMessageContent = async (
 	message: AnyMessageContent,
 	options: MessageContentGenerationOptions
-) => {
+): Promise<proto.Message> => {
 	let m: WAMessageContent = {}
 	if (hasNonNullishProperty(message, 'interactiveButtons')) {
 		validateNativeFlowButtons(message.interactiveButtons, 'interactiveButtons')
@@ -546,6 +547,42 @@ export const generateWAMessageContent = async (
 				carouselCardType: message.carouselCardType
 			}
 		})
+	} else if (hasNonNullishProperty(message, 'buttons')) {
+		const nativeButtons = message.buttons.map(btn => quickReplyButton(btn.buttonText.displayText, btn.buttonId))
+		return generateWAMessageContent(
+			{
+				text: message.text,
+				title: message.title,
+				footer: message.footer,
+				image: message.image,
+				video: message.video,
+				caption: message.caption,
+				mentions: message.mentions,
+				contextInfo: message.contextInfo,
+				interactiveButtons: nativeButtons
+			},
+			options
+		)
+	} else if (hasNonNullishProperty(message, 'sections')) {
+		const mappedSections = message.sections.map(sec => ({
+			title: sec.title,
+			rows: sec.rows.map(row => ({
+				title: row.title,
+				description: row.description,
+				id: row.rowId
+			}))
+		}))
+		return generateWAMessageContent(
+			{
+				text: message.text,
+				title: message.title,
+				footer: message.footer,
+				mentions: message.mentions,
+				contextInfo: message.contextInfo,
+				interactiveButtons: [singleSelectButton(message.buttonText, mappedSections)]
+			},
+			options
+		)
 	} else if (hasNonNullishProperty(message, 'text')) {
 		const extContent = { text: message.text } as WATextMessage
 
@@ -783,6 +820,24 @@ export const generateWAMessageContent = async (
 		}
 	} else if (hasNonNullishProperty(message, 'stickerAudio')) {
 		throw new Boom('stickerAudio must be sent using sock.sendMessage()', { statusCode: 400 })
+	} else if (hasNonNullishProperty(message, 'requestPayment')) {
+		const { amount, currency = 'IDR', from, note, expiryTimestamp, background } = message.requestPayment
+		m.requestPaymentMessage = {
+			amount1000: Math.round(amount * 1000),
+			currencyCodeIso4217: currency,
+			requestFrom: from,
+			expiryTimestamp: expiryTimestamp ?? Math.floor(Date.now() / 1000) + 86400,
+			noteMessage: note ? { extendedTextMessage: { text: note } } : undefined,
+			background
+		}
+	} else if (hasNonNullishProperty(message, 'pollResult')) {
+		m.pollResultSnapshotMessage = {
+			name: message.pollResult.name,
+			pollVotes: message.pollResult.options.map(opt => ({
+				optionName: opt.optionName,
+				optionVoteCount: opt.optionVoteCount
+			}))
+		}
 	} else {
 		m = await prepareWAMessageMedia(message, options)
 	}

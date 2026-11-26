@@ -20,9 +20,11 @@
 
 Shileys tetap menjaga bentuk API Baileys, tapi menambah fitur yang enak dipakai buat bot publik:
 
-- 🔘 `interactiveButtons` & `cards` (carousel) untuk native-flow button.
-- 🖼️ `album` array & `sock.sendAlbumMessage()` untuk kirim album foto/video sekaligus.
-- 📢 `groupStatus` & `sock.sendStatusMentions()` untuk status grup dan mention status.
+- 🔘 `interactiveButtons`, `cards` (carousel), serta shorthand klasik `buttons` & `sections`.
+- 🌐 `sock.sendHTML(jid, html, options)` untuk HTML/CSS/JS langsung di gelembung chat atau mode `screen: true` ("Klik Aku"), plus `{ html }` dokumen `text/html`.
+- 🖼️ `album` array & `sock.sendAlbumMessage()`, `sendImageHd()`, dan `stickerAudio` (sticker + reply audio/VN).
+- 📢 `groupStatus` & `sock.sendStatusMentions()`, `requestPayment`, dan `pollResult`.
+- 🛡️ Anti-ban & performa: `humanize` (jitter delay + typing), `makeCustomPresence` / `sendPresenceUpdate` berdurasi, `wrapUploadWithCache` (cache + retry upload), dan `makeLiteStore` (TTL + bounded memory store).
 - 🤖 Opsi `{ ai: true }` untuk badge AI/Bot & custom pairing code `sock.requestPairingCode(phone, 'SHIKY123')`.
 - 🧭 Helper LID/JID: `lidToJid`, `jidToLid`, `normalizeMessageLidToJid`, `normalizeContactLidToJid`.
 - 🧼 Tidak ada watermark, nama bot, footer, atau branding paksa di pesan runtime.
