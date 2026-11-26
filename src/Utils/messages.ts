@@ -392,74 +392,104 @@ function hasOptionalProperty<T, K extends PropertyKey>(obj: T, key: K): obj is W
 	return typeof obj === 'object' && obj !== null && key in obj && (obj as any)[key] !== null
 }
 
+type InteractiveHeaderMediaSource = {
+	title?: string
+	subtitle?: string
+	image?: WAMediaUpload
+	video?: WAMediaUpload
+	gifPlayback?: boolean
+	document?: WAMediaUpload
+	mimetype?: string
+	fileName?: string
+	caption?: string
+	jpegThumbnail?: string
+	width?: number
+	height?: number
+}
+
+const validateNativeFlowButtons = (
+	buttons: proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton[],
+	fieldName: string
+) => {
+	if (!Array.isArray(buttons) || buttons.length === 0) {
+		throw new Boom(`${fieldName} must contain at least 1 button`, { statusCode: 400 })
+	}
+
+	for (const button of buttons) {
+		if (!button.name || typeof button.name !== 'string') {
+			throw new Boom(`${fieldName} button requires a string name`, { statusCode: 400 })
+		}
+
+		if (!button.buttonParamsJson || typeof button.buttonParamsJson !== 'string') {
+			throw new Boom(`${fieldName} button requires a string buttonParamsJson`, { statusCode: 400 })
+		}
+	}
+}
+
+const buildInteractiveMediaHeader = async (
+	source: InteractiveHeaderMediaSource,
+	options: MessageContentGenerationOptions
+): Promise<proto.Message.InteractiveMessage.IHeader> => {
+	const header: proto.Message.InteractiveMessage.IHeader = {
+		title: source.title,
+		subtitle: source.subtitle,
+		hasMediaAttachment: false
+	}
+
+	if (source.image) {
+		const { imageMessage } = await prepareWAMessageMedia(
+			{
+				image: source.image,
+				caption: source.caption,
+				jpegThumbnail: source.jpegThumbnail,
+				mimetype: source.mimetype,
+				width: source.width,
+				height: source.height
+			},
+			options
+		)
+		header.hasMediaAttachment = true
+		header.imageMessage = imageMessage
+	} else if (source.video) {
+		const { videoMessage } = await prepareWAMessageMedia(
+			{
+				video: source.video,
+				caption: source.caption,
+				gifPlayback: source.gifPlayback,
+				jpegThumbnail: source.jpegThumbnail,
+				mimetype: source.mimetype,
+				width: source.width,
+				height: source.height
+			},
+			options
+		)
+		header.hasMediaAttachment = true
+		header.videoMessage = videoMessage
+	} else if (source.document) {
+		const { documentMessage } = await prepareWAMessageMedia(
+			{
+				document: source.document,
+				mimetype: source.mimetype || 'application/octet-stream',
+				fileName: source.fileName,
+				caption: source.caption
+			},
+			options
+		)
+		header.hasMediaAttachment = true
+		header.documentMessage = documentMessage
+	}
+
+	return header
+}
+
 export const generateWAMessageContent = async (
 	message: AnyMessageContent,
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
 	if (hasNonNullishProperty(message, 'interactiveButtons')) {
-		if (!Array.isArray(message.interactiveButtons) || message.interactiveButtons.length === 0) {
-			throw new Boom('interactiveButtons must contain at least 1 button', { statusCode: 400 })
-		}
-
-		for (const button of message.interactiveButtons) {
-			if (!button.name || typeof button.name !== 'string') {
-				throw new Boom('interactiveButtons button requires a string name', { statusCode: 400 })
-			}
-
-			if (!button.buttonParamsJson || typeof button.buttonParamsJson !== 'string') {
-				throw new Boom('interactiveButtons button requires a string buttonParamsJson', { statusCode: 400 })
-			}
-		}
-
-		const header: proto.Message.InteractiveMessage.IHeader = {
-			title: message.title,
-			subtitle: message.subtitle,
-			hasMediaAttachment: false
-		}
-
-		if (hasOptionalProperty(message, 'image') && message.image) {
-			const { imageMessage } = await prepareWAMessageMedia(
-				{
-					image: message.image,
-					caption: message.caption,
-					jpegThumbnail: message.jpegThumbnail,
-					mimetype: message.mimetype,
-					width: message.width,
-					height: message.height
-				},
-				options
-			)
-			header.hasMediaAttachment = true
-			header.imageMessage = imageMessage
-		} else if (hasOptionalProperty(message, 'video') && message.video) {
-			const { videoMessage } = await prepareWAMessageMedia(
-				{
-					video: message.video,
-					caption: message.caption,
-					gifPlayback: message.gifPlayback,
-					jpegThumbnail: message.jpegThumbnail,
-					mimetype: message.mimetype,
-					width: message.width,
-					height: message.height
-				},
-				options
-			)
-			header.hasMediaAttachment = true
-			header.videoMessage = videoMessage
-		} else if (hasOptionalProperty(message, 'document') && message.document) {
-			const { documentMessage } = await prepareWAMessageMedia(
-				{
-					document: message.document,
-					mimetype: message.mimetype || 'application/octet-stream',
-					fileName: message.fileName,
-					caption: message.caption
-				},
-				options
-			)
-			header.hasMediaAttachment = true
-			header.documentMessage = documentMessage
-		}
+		validateNativeFlowButtons(message.interactiveButtons, 'interactiveButtons')
+		const header = await buildInteractiveMediaHeader(message, options)
 
 		m.interactiveMessage = WAProto.Message.InteractiveMessage.create({
 			body: {
@@ -475,6 +505,45 @@ export const generateWAMessageContent = async (
 				buttons: message.interactiveButtons,
 				messageParamsJson: message.messageParamsJson,
 				messageVersion: message.messageVersion
+			}
+		})
+	} else if (hasNonNullishProperty(message, 'cards')) {
+		if (!Array.isArray(message.cards) || message.cards.length === 0) {
+			throw new Boom('cards must contain at least 1 card', { statusCode: 400 })
+		}
+
+		const cards = await Promise.all(
+			message.cards.map(async (card, index) => {
+				validateNativeFlowButtons(card.buttons, `cards[${index}].buttons`)
+				const header = await buildInteractiveMediaHeader(card, options)
+				return WAProto.Message.InteractiveMessage.create({
+					body: card.body ? { text: card.body } : undefined,
+					header,
+					footer: card.footer ? { text: card.footer } : undefined,
+					nativeFlowMessage: {
+						buttons: card.buttons,
+						messageParamsJson: card.messageParamsJson,
+						messageVersion: card.messageVersion
+					}
+				})
+			})
+		)
+
+		m.interactiveMessage = WAProto.Message.InteractiveMessage.create({
+			body: message.text ? { text: message.text } : undefined,
+			header:
+				message.title || message.subtitle
+					? {
+							title: message.title,
+							subtitle: message.subtitle,
+							hasMediaAttachment: false
+						}
+					: undefined,
+			footer: message.footer ? { text: message.footer } : undefined,
+			carouselMessage: {
+				cards,
+				messageVersion: message.messageVersion ?? 1,
+				carouselCardType: message.carouselCardType
 			}
 		})
 	} else if (hasNonNullishProperty(message, 'text')) {
@@ -667,10 +736,35 @@ export const generateWAMessageContent = async (
 			}
 		}
 	} else if (hasNonNullishProperty(message, 'album')) {
-		m.albumMessage = {
-			expectedImageCount: message.album.expectedImageCount,
-			expectedVideoCount: message.album.expectedVideoCount
+		if (Array.isArray(message.album)) {
+			const expectedImageCount = message.album.filter(item => 'image' in item).length
+			const expectedVideoCount = message.album.filter(item => 'video' in item).length
+			m.albumMessage = {
+				expectedImageCount,
+				expectedVideoCount
+			}
+		} else {
+			m.albumMessage = {
+				expectedImageCount: message.album.expectedImageCount,
+				expectedVideoCount: message.album.expectedVideoCount
+			}
 		}
+	} else if (hasNonNullishProperty(message, 'groupStatus')) {
+		const innerMessage = await generateWAMessageContent(message.groupStatus, options)
+		m.groupStatusMessageV2 = {
+			message: innerMessage
+		}
+	} else if (hasNonNullishProperty(message, 'html')) {
+		const htmlBuffer = typeof message.html === 'string' ? Buffer.from(message.html, 'utf-8') : message.html
+		m = await prepareWAMessageMedia(
+			{
+				document: htmlBuffer,
+				mimetype: 'text/html',
+				fileName: message.fileName || 'index.html',
+				caption: message.caption
+			},
+			options
+		)
 	} else if (hasNonNullishProperty(message, 'sharePhoneNumber')) {
 		m.protocolMessage = {
 			type: proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER
@@ -687,6 +781,8 @@ export const generateWAMessageContent = async (
 				initiatedByMe: true
 			}
 		}
+	} else if (hasNonNullishProperty(message, 'stickerAudio')) {
+		throw new Boom('stickerAudio must be sent using sock.sendMessage()', { statusCode: 400 })
 	} else {
 		m = await prepareWAMessageMedia(message, options)
 	}

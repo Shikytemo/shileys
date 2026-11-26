@@ -55,6 +55,30 @@ export const singleSelectButton = (
 		sections
 	})
 
+export const reminderButton = (displayText: string, id: string) =>
+	nativeFlowButton('cta_reminder', {
+		display_text: displayText,
+		id
+	})
+
+export const locationButton = (displayText: string) =>
+	nativeFlowButton('send_location', {
+		display_text: displayText
+	})
+
+export const catalogButton = (displayText: string, businessOwnerJid: string, thumbnailProductId?: string) =>
+	nativeFlowButton('cta_catalog', {
+		display_text: displayText,
+		business_phone_number: businessOwnerJid,
+		...(thumbnailProductId ? { thumbnail_product_id: thumbnailProductId } : {})
+	})
+
+export const addressButton = (displayText: string, id: string) =>
+	nativeFlowButton('address_message', {
+		display_text: displayText,
+		id
+	})
+
 export const buildNativeFlowNode = (): BinaryNode => ({
 	tag: 'biz',
 	attrs: {

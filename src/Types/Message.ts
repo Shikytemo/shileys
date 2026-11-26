@@ -163,6 +163,23 @@ export type AlbumMessageOptions = {
 	expectedVideoCount?: number
 }
 
+export type AlbumMediaItem =
+	| ({
+			image: WAMediaUpload
+			caption?: string
+			jpegThumbnail?: string
+	  } & Mentionable &
+			Contextable &
+			WithDimensions)
+	| ({
+			video: WAMediaUpload
+			caption?: string
+			gifPlayback?: boolean
+			jpegThumbnail?: string
+	  } & Mentionable &
+			Contextable &
+			WithDimensions)
+
 type SharePhoneNumber = {
 	sharePhoneNumber: boolean
 }
@@ -240,6 +257,54 @@ export type InteractiveButtonsMessage = {
 } & Mentionable &
 	Contextable
 
+export type CarouselCard = {
+	title?: string
+	subtitle?: string
+	body?: string
+	footer?: string
+	image?: WAMediaUpload
+	video?: WAMediaUpload
+	gifPlayback?: boolean
+	caption?: string
+	jpegThumbnail?: string
+	width?: number
+	height?: number
+	buttons: NativeFlowButton[]
+	messageParamsJson?: string
+	messageVersion?: number
+}
+
+export type CarouselMessage = {
+	text?: string
+	title?: string
+	subtitle?: string
+	footer?: string
+	cards: CarouselCard[]
+	messageVersion?: number
+	carouselCardType?: proto.Message.InteractiveMessage.CarouselMessage.CarouselCardType
+} & Mentionable &
+	Contextable
+
+export type HtmlMessageContent = {
+	html: string | Buffer
+	fileName?: string
+	caption?: string
+} & Mentionable &
+	Contextable
+
+export type StickerAudioContent = {
+	stickerAudio: {
+		sticker: WAMediaUpload
+		audio: WAMediaUpload
+		ptt?: boolean
+		seconds?: number
+		mimetype?: string
+		isAnimated?: boolean
+		width?: number
+		height?: number
+	}
+} & Contextable
+
 export type GroupInviteInfo = {
 	inviteCode: string
 	inviteExpiration: number
@@ -260,6 +325,9 @@ export type AnyRegularMessageContent = (
 			Contextable &
 			Editable)
 	| InteractiveButtonsMessage
+	| CarouselMessage
+	| HtmlMessageContent
+	| StickerAudioContent
 	| AnyMediaMessageContent
 	| { event: EventMessageOptions }
 	| ({
@@ -268,9 +336,18 @@ export type AnyRegularMessageContent = (
 			Contextable &
 			Editable)
 	| ({
-			album: AlbumMessageOptions
+			album: AlbumMessageOptions | AlbumMediaItem[]
 	  } & Contextable &
 			Mentionable)
+	| {
+			groupStatus:
+				| AnyMediaMessageContent
+				| ({
+						text: string
+						linkPreview?: WAUrlInfo | null
+				  } & Mentionable &
+						Contextable)
+	  }
 	| {
 			contacts: {
 				displayName?: string
@@ -365,6 +442,10 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
 	font?: number
 	/** if it is broadcast */
 	broadcast?: boolean
+	/** add AI / bot badge node to the message */
+	ai?: boolean
+	/** JIDs mentioned in a status@broadcast message */
+	statusMentions?: string[]
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string

@@ -3,6 +3,7 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
+	AlbumMediaItem,
 	AnyMessageContent,
 	MediaConnInfo,
 	MessageReceiptType,
@@ -28,6 +29,7 @@ import {
 	generateMessageIDV2,
 	generateParticipantHashV2,
 	generateWAMessage,
+	generateWAMessageFromContent,
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
@@ -1326,7 +1328,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			return message
 		},
-		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
+		sendMessage: async (
+			jid: string,
+			content: AnyMessageContent,
+			options: MiscMessageGenerationOptions = {}
+		): Promise<WAMessage | undefined> => {
 			const userJid = authState.creds.me!.id
 			if (
 				typeof content === 'object' &&
@@ -1342,6 +1348,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							: 0
 						: disappearingMessagesInChat
 				await groupToggleEphemeral(jid, value)
+			} else if (typeof content === 'object' && 'album' in content && Array.isArray(content.album)) {
+				const { album } = await sendAlbumItems(jid, content.album, options)
+				return album
+			} else if (typeof content === 'object' && 'stickerAudio' in content && !!content.stickerAudio) {
+				const { sticker, audio, ptt, seconds, mimetype, isAnimated, width, height } = content.stickerAudio
+				const stickerMsg = await sendMessageDirect(
+					jid,
+					{
+						sticker,
+						isAnimated,
+						width,
+						height
+					},
+					options
+				)
+				return sendMessageDirect(
+					jid,
+					{
+						audio,
+						ptt: ptt ?? true,
+						seconds,
+						mimetype
+					},
+					{
+						...options,
+						quoted: stickerMsg
+					}
+				)
 			} else {
 				const fullMsg = await generateWAMessage(jid, content, {
 					logger,
@@ -1399,8 +1433,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					} as BinaryNode)
 				}
-				if (typeof content === 'object' && 'interactiveButtons' in content) {
+
+				if (typeof content === 'object' && ('interactiveButtons' in content || 'cards' in content)) {
 					additionalNodes.push(...buildNativeFlowAdditionalNodes(jid))
+				} else if (options.ai) {
+					additionalNodes.push({
+						tag: 'bot',
+						attrs: {
+							biz_bot: '1'
+						}
+					})
+				}
+
+				if (jid === 'status@broadcast' && options.statusMentions?.length) {
+					additionalNodes.push({
+						tag: 'meta',
+						attrs: {
+							is_status_mention: 'true'
+						}
+					})
 				}
 
 				await relayMessage(jid, fullMsg.message!, {
@@ -1418,6 +1469,152 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				return fullMsg
 			}
+		},
+		sendAlbumMessage: async (jid: string, medias: AlbumMediaItem[], options: MiscMessageGenerationOptions = {}) => {
+			return sendAlbumItems(jid, medias, options)
+		},
+		sendStatusMentions: async (
+			content: AnyMessageContent,
+			jids: string[],
+			options: MiscMessageGenerationOptions = {}
+		) => {
+			const userJid = authState.creds.me!.id
+			const statusJidSet = new Set<string>([userJid, ...(options.statusJidList || [])])
+
+			for (const targetJid of jids) {
+				if (isJidGroup(targetJid)) {
+					const metadata = await groupMetadata(targetJid)
+					for (const participant of metadata.participants) {
+						statusJidSet.add(participant.id)
+					}
+				} else {
+					statusJidSet.add(targetJid)
+				}
+			}
+
+			const statusJidList = Array.from(statusJidSet)
+			const statusMsg = await sendMessageDirect('status@broadcast', content, {
+				...options,
+				statusJidList,
+				statusMentions: jids,
+				broadcast: true
+			})
+
+			if (statusMsg) {
+				for (const targetJid of jids) {
+					const mentionMsg = generateWAMessageFromContent(
+						targetJid,
+						{
+							statusMentionMessage: {
+								message: {
+									protocolMessage: {
+										key: statusMsg.key,
+										type: proto.Message.ProtocolMessage.Type.STATUS_MENTION_MESSAGE
+									}
+								}
+							}
+						},
+						{ userJid }
+					)
+					await relayMessage(targetJid, mentionMsg.message!, {
+						messageId: mentionMsg.key.id!,
+						useCachedGroupMetadata: options.useCachedGroupMetadata
+					})
+				}
+			}
+
+			return statusMsg
 		}
+	}
+
+	async function sendMessageDirect(
+		jid: string,
+		content: AnyMessageContent,
+		options: MiscMessageGenerationOptions = {}
+	) {
+		const userJid = authState.creds.me!.id
+		const fullMsg = await generateWAMessage(jid, content, {
+			logger,
+			userJid,
+			getUrlInfo: text =>
+				getUrlInfo(text, {
+					thumbnailWidth: linkPreviewImageThumbnailWidth,
+					fetchOpts: {
+						timeout: 3_000,
+						...(httpRequestOptions || {})
+					},
+					logger,
+					uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
+				}),
+			getProfilePicUrl: sock.profilePictureUrl,
+			getCallLink: sock.createCallLink,
+			upload: waUploadToServer,
+			mediaCache: config.mediaCache,
+			options: config.options,
+			messageId: generateMessageIDV2(sock.user?.id),
+			...options
+		})
+		const additionalNodes: BinaryNode[] = []
+		if (jid === 'status@broadcast' && options.statusMentions?.length) {
+			additionalNodes.push({
+				tag: 'meta',
+				attrs: {
+					is_status_mention: 'true'
+				}
+			})
+		}
+
+		await relayMessage(jid, fullMsg.message!, {
+			messageId: fullMsg.key.id!,
+			useCachedGroupMetadata: options.useCachedGroupMetadata,
+			statusJidList: options.statusJidList,
+			additionalNodes
+		})
+		if (config.emitOwnEvents) {
+			process.nextTick(async () => {
+				await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
+			})
+		}
+
+		return fullMsg
+	}
+
+	async function sendAlbumItems(
+		jid: string,
+		medias: AlbumMediaItem[],
+		options: MiscMessageGenerationOptions = {}
+	) {
+		if (!medias.length) {
+			throw new Boom('album must contain at least 1 media item', { statusCode: 400 })
+		}
+
+		const expectedImageCount = medias.filter(item => 'image' in item).length
+		const expectedVideoCount = medias.filter(item => 'video' in item).length
+
+		const album = await sendMessageDirect(
+			jid,
+			{
+				album: {
+					expectedImageCount,
+					expectedVideoCount
+				}
+			},
+			options
+		)
+
+		const items: WAMessage[] = []
+		for (const media of medias) {
+			const sent = await sendMessageDirect(
+				jid,
+				{
+					...media,
+					albumParentKey: album.key
+				},
+				options
+			)
+			items.push(sent)
+		}
+
+		return { album, items }
 	}
 }

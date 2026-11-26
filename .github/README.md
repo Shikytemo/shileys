@@ -20,7 +20,10 @@
 
 Shileys tetap menjaga bentuk API Baileys, tapi menambah fitur yang enak dipakai buat bot publik:
 
-- 🔘 `interactiveButtons` untuk native-flow button.
+- 🔘 `interactiveButtons` & `cards` (carousel) untuk native-flow button.
+- 🖼️ `album` array & `sock.sendAlbumMessage()` untuk kirim album foto/video sekaligus.
+- 📢 `groupStatus` & `sock.sendStatusMentions()` untuk status grup dan mention status.
+- 🤖 Opsi `{ ai: true }` untuk badge AI/Bot & custom pairing code `sock.requestPairingCode(phone, 'SHIKY123')`.
 - 🧭 Helper LID/JID: `lidToJid`, `jidToLid`, `normalizeMessageLidToJid`, `normalizeContactLidToJid`.
 - 🧼 Tidak ada watermark, nama bot, footer, atau branding paksa di pesan runtime.
 - 🧩 CLI kecil `shileys` buat info package.
@@ -85,9 +88,59 @@ singleSelectButton('Buka Menu', sections)
 urlButton('GitHub', 'https://github.com/Shikytemo/shileys')
 copyButton('Copy Code', 'DIANABOT')
 callButton('Call Owner', '628xxxx')
+reminderButton('Ingatkan', 'rem_1')
+locationButton('Kirim Lokasi')
+catalogButton('Lihat Katalog', '628xxxx@s.whatsapp.net')
+addressButton('Isi Alamat', 'addr_1')
 ```
 
 `sock.sendMessage()` otomatis menambahkan native-flow relay node yang dibutuhkan WhatsApp, jadi aplikasi tidak perlu memanggil `relayMessage()` manual.
+
+## 🎠 Carousel / Cards, Album, & Status
+
+```ts
+// Carousel cards
+await sock.sendMessage(jid, {
+  text: 'Daftar Produk',
+  footer: 'Geser ke samping',
+  cards: [
+    {
+      title: 'Paket A',
+      body: 'Deskripsi paket A',
+      image: { url: 'https://example.com/a.jpg' },
+      buttons: [quickReplyButton('Beli A', 'buy_a')]
+    }
+  ]
+})
+
+// Album foto/video sekaligus
+await sock.sendMessage(jid, {
+  album: [
+    { image: { url: 'https://example.com/1.jpg' }, caption: 'Foto 1' },
+    { video: { url: 'https://example.com/2.mp4' }, caption: 'Video 2' }
+  ]
+})
+
+// Group status (SW di grup) & Status mentions
+await sock.sendMessage(groupJid, { groupStatus: { text: 'Halo grup!' } })
+await sock.sendStatusMentions({ text: 'Cek status ini!' }, ['628xxxx@s.whatsapp.net', groupJid])
+
+// Send HTML sebagai dokumen text/html
+await sock.sendMessage(jid, {
+  html: '<h1>Hello Shileys</h1>',
+  fileName: 'hello.html',
+  caption: 'Preview HTML'
+})
+
+// Sticker + Audio (kirim sticker lalu audio/VN yang me-reply sticker)
+await sock.sendMessage(jid, {
+  stickerAudio: {
+    sticker: { url: './sticker.webp' },
+    audio: { url: './audio.ogg' },
+    ptt: true
+  }
+})
+```
 
 ## 🧭 LID ke JID
 
