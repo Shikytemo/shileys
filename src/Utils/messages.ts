@@ -1000,9 +1000,9 @@ export const generateWAMessage = async (jid: string, content: AnyMessageContent,
 	// Pass jid in the options to generateWAMessageContent
 	let message = await generateWAMessageContent(content, { ...options, jid })
 
-	if (message.interactiveMessage?.nativeFlowMessage) {
+	if (message.interactiveMessage?.nativeFlowMessage || message.interactiveMessage?.carouselMessage) {
 		message = WAProto.Message.create({
-			viewOnceMessageV2Extension: {
+			viewOnceMessage: {
 				message: {
 					messageContextInfo: {
 						deviceListMetadata: {},

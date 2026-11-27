@@ -112,20 +112,4 @@ export const buildNativeFlowNode = (): BinaryNode => ({
 	]
 })
 
-export const buildNativeFlowAdditionalNodes = (jid: string): BinaryNode[] => {
-	const nativeFlowNode = buildNativeFlowNode()
-
-	if (isJidGroup(jid)) {
-		return [nativeFlowNode]
-	}
-
-	return [
-		{
-			tag: 'bot',
-			attrs: {
-				biz_bot: '1'
-			}
-		},
-		nativeFlowNode
-	]
-}
+export const buildNativeFlowAdditionalNodes = (_jid: string): BinaryNode[] => [buildNativeFlowNode()]

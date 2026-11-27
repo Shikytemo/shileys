@@ -83,7 +83,7 @@ describe('Message generation', () => {
 	})
 
 	it('builds native flow relay nodes for user chats and groups', () => {
-		expect(buildNativeFlowAdditionalNodes('628123@s.whatsapp.net').map(node => node.tag)).toEqual(['bot', 'biz'])
+		expect(buildNativeFlowAdditionalNodes('628123@s.whatsapp.net').map(node => node.tag)).toEqual(['biz'])
 		expect(buildNativeFlowAdditionalNodes('120363@g.us').map(node => node.tag)).toEqual(['biz'])
 	})
 
